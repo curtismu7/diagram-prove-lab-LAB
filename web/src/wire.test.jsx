@@ -3,6 +3,7 @@ import { render, screen, waitFor, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { JSDOM } from "jsdom";
 import { SAMPLES, toHtml } from "@diagram-prove-lab/core";
+import { setJsonView } from "./components/JsonPane.jsx";
 
 let canvas;
 vi.mock("./Canvas.jsx", () => ({ default: (props) => { canvas = props; return <div data-testid="canvas" />; } }));
@@ -19,7 +20,7 @@ function fakeApi() {
   });
 }
 const at = (q) => window.history.replaceState(null, "", `/${q}`);
-beforeEach(() => { localStorage.clear(); canvas = null; fakeApi(); });
+beforeEach(() => { localStorage.clear(); setJsonView("form"); canvas = null; fakeApi(); });
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); at(""); });
 async function ready(id) {
   at(`?d=${id}`);
@@ -37,10 +38,11 @@ describe("WirePanel", () => {
     const rows = screen.getAllByTestId("wire-row");
     expect(rows.length).toBeGreaterThan(6);
     const aud = rows.find((r) => within(r).queryByText("aud"));
-    expect(aud).toHaveTextContent("https://service-b.example.com");
     expect(aud).toHaveTextContent(/the one service this token is FOR/i);
     expect(aud).toHaveClass("wire-focus");
     expect(screen.getByTestId("wire-token-0")).toHaveTextContent("sig-not-real");
+    // the decoded values live in the shared JsonPane (Form view by default), the table beside them says what each field means
+    expect(within(screen.getByTestId("wire-token-0")).getByLabelText("Token payload (decoded)")).toHaveTextContent("https://service-b.example.com");
     expect(screen.getByTestId("wire-notice")).toHaveTextContent("What to notice.");
     expect(screen.getByText("Jargon on this step")).toBeInTheDocument();
   });
@@ -54,6 +56,37 @@ describe("WirePanel", () => {
     expect(screen.getByTestId("wire-none")).toHaveTextContent("No network call here. this is a decision a person makes.");
     expect(screen.queryByTestId("wire-request")).toBeNull();
     expect(screen.queryAllByTestId("wire-row")).toHaveLength(0);
+  });
+  it("every JSON on the wire goes through the shared JsonPane: Form | JSON toggle, the token's focus claims marked, nothing capped", () => {
+    const wire = tokenExchange().steps[1].wire;
+    const { container } = render(<WirePanel wire={{ ...wire, tokens: wire.tokens.map((t) => ({ ...t, payload: { ...t.payload, tenant_tag: "t-1" }, focus: [...(t.focus || []), "tenant_tag"] })) }} />);
+    expect(container.querySelectorAll("pre:not(.json)")).toHaveLength(0); // no hand-rolled pre
+    const token = screen.getByTestId("wire-token-0");
+    const payload = within(token).getByLabelText("Token payload (decoded)");
+    expect(within(token).getAllByRole("button", { name: "Form" }).length).toBeGreaterThan(0);
+    expect(within(token).getAllByRole("button", { name: "JSON" }).length).toBeGreaterThan(0);
+    // Form view: the lab's own focus claim (not a default) is marked hot
+    expect(payload.querySelector('[data-hot="true"] .jform__k')).not.toBeNull();
+    expect([...payload.querySelectorAll('[data-hot="true"] .jform__k')].map((k) => k.textContent)).toContain("tenant_tag");
+    // JSON view: the exact JSON text, the same claim stood out
+    act(() => setJsonView("raw"));
+    const raw = within(token).getByLabelText("Token payload (decoded)");
+    expect(raw).toHaveTextContent('"aud": "https://service-b.example.com"');
+    expect([...raw.querySelectorAll(".jtok--hot")].map((k) => k.textContent)).toContain('"tenant_tag"');
+  });
+  it("a JSON response body gets its own Form | JSON pane under the status line and headers", () => {
+    render(<WirePanel wire={tokenExchange().steps[1].wire} />);
+    const res = screen.getByTestId("wire-response");
+    expect(within(res).getByLabelText("Response headers")).toHaveTextContent("HTTP/1.1 200 OK");
+    act(() => setJsonView("raw"));
+    const body = within(res).getByLabelText("Response body");
+    expect(body).toHaveTextContent('"issued_token_type"');
+    expect([...body.querySelectorAll(".jtok--hot")].map((k) => k.textContent)).toContain('"issued_token_type"'); // this lab's hot key
+  });
+  it("a form-encoded request body is not JSON, so it stays plain text", () => {
+    render(<WirePanel wire={tokenExchange().steps[0].wire} />);
+    expect(within(screen.getByTestId("wire-request")).queryByRole("button", { name: "JSON" })).toBeNull();
+    expect(screen.getByTestId("wire-request")).toHaveTextContent("grant_type=urn:ietf:params:oauth:grant-type:token-exchange");
   });
   it("hostile text is shown as text", () => {
     const { container } = render(<WirePanel wire={{ request: { method: "GET", url: "https://a.example.com/<img src=x onerror=alert(1)>" }, notice: "<script>x</script>" }} />);
