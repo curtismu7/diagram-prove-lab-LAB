@@ -20,8 +20,14 @@
   gap: 0.35rem;
   font-size: 0.78rem;
   font-weight: 600;
+  /* Same theme-aware text as the control fill: dark on light, white on dark (owner, 2026-11-13). */
+  color: var(--text);
+}
+
+/* Inside the standard shell-bar the background is --box-dark in BOTH themes, so the
+   theme-aware --text above is dark-on-dark in the light theme. Labels there use --on-box. */
+.shell-bar .top-menu__ctl {
   color: var(--on-box);
-  opacity: 0.9;
 }
 
 .top-menu button,
@@ -31,10 +37,11 @@
   font-size: 0.85rem;
   padding: 0 0.7rem;
   border-radius: 8px;
-  background: transparent;
-  color: var(--on-box);
-  /* --on-accent-border is defined by the vendored standalone-ui.css; no literal fallback (P10/T1) */
-  border: 1px solid var(--on-accent-border);
+  /* Filled control + strong border so the controls read on any header, light or dark (owner, 2026-11-13).
+     Light: pale fill, near-black border and text. Dark: dark fill, white border and text. */
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--text);
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
@@ -45,7 +52,8 @@
 .top-menu button:hover,
 .top-menu select:hover,
 .top-menu a.top-menu__shelf:hover {
-  border-color: var(--on-box);
+  border-color: var(--text);
+  filter: brightness(1.08);
 }
 
 /* Shelf stands out: Ping-red (fixed brand red, NOT the lab's remapped --accent), with the arrow from ::after */
