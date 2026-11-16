@@ -39,7 +39,8 @@ try {
   page.on('console', (m) => { if (m.type() === 'error' && !/status of 422/.test(m.text()) && !/Framing .*frame-ancestors 'none'/.test(m.text())) errors.push(m.text()); /* the 422 is the bad import on purpose */ });
   page.on('dialog', (d) => d.accept());
   const T = (id) => page.getByTestId(id);
-  const pos = async (id) => { const b = await T(`node-${id}`).boundingBox(); return b && [Math.round(b.x), Math.round(b.y)]; };
+  // Page coordinates (viewport box + scroll), so a page that scrolls a little between two reads does not look like a moved box.
+  const pos = async (id) => { const b = await T(`node-${id}`).boundingBox(); const [sx, sy] = await page.evaluate(() => [window.scrollX, window.scrollY]); return b && [Math.round(b.x + sx), Math.round(b.y + sy)]; };
 
   await page.goto(base);
   await T('canvas').waitFor();
