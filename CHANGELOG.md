@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Verification mark in the header: the shared `VerifyMark` (vendored byte for byte from AI-DEMO-Standalone `shared/verify-mark`, pinned) shows this lab's Verified / In progress mark from the demo shelf, inside the top menu beside the Shelf link. It reads the same `GET /api/shelf` call the Shelf link makes (`api/shelf`, relative), so it shows when that call reaches the shelf (through the lab-proxy) and nothing when the lab is opened on its own port, when the shelf has no mark for it, or when the shelf is unreachable.
 - On the wire: optional `step.wire` (request, response, tokens decoded claim by claim with plain-language meanings, notice, or a no-traffic note) shown in the step list, detail panel, presenter and embed views and the HTML export. Example data for 10 token and MCP flows (`core/src/wiredata.js`); signatures are always `sig-not-real`.
 - Conformance: `CLAUDE.md`, `docs/safety.md`, a forbidden-strings CI job, `MODE=mock`, and SE-cluster manifests with a dry-run deploy script (not deployed).
 - Save as HTML: one self-contained, offline walkthrough file.
