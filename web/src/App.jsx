@@ -12,6 +12,7 @@ import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
 import { useStepper } from "./useStepper.js";
 import { keyAction } from "./presenterKeys.js";
 import ShelfLink from "./components/ShelfLink.jsx";
+import VerifyMark from "./components/VerifyMark.jsx";
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // Version for the TopMenu About button: read once from the lab root package.json (same source the server's /api/health uses).
@@ -247,6 +248,7 @@ export default function App() {
           extra={null}
         >
           <ShelfLink path="api/shelf" />
+          <VerifyMark id="diagram-prove-lab" path="api/shelf" />
         </TopMenu>
       </header>
 

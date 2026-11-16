@@ -4,6 +4,7 @@ import "./standalone-ui.css";
 import "./top-menu/top-menu.css";
 import "@xyflow/react/dist/style.css";
 import "./components/JsonPane.css";
+import "./components/VerifyMark.css";
 import App from "./App.jsx";
 import Embed from "./Embed.jsx";
 import { isEmbedRequest } from "./embedMode.js";
