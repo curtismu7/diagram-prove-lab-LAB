@@ -245,7 +245,8 @@ export default function App() {
       </TopMenu>
     </header>
   );
-  const banner = mockOnly && <p className="banner" role="note" data-testid="mock-banner">Hosted mock: sample data only, nothing leaves this server</p>;
+  // Shown in every run (UI patterns section 2): the hosted text in the hosted mock, the local Mock text otherwise. Real is never available here.
+  const banner = <p className="banner" role="note" data-testid="mock-banner">{mockOnly ? "Hosted mock: sample data only, nothing leaves this server" : "Mock mode: a local authoring tool over a local store. Simulate walks the arrows in order; no tenant, no outbound network request"}</p>;
   if (!diagram) return <>{shellBar}<main id="main" className="page">{banner}<p role="status">{msg.text || "Loading…"}</p></main></>;
   const selNode = sel.node && diagram.nodes.find((n) => n.id === sel.node);
   const selEdge = Number.isInteger(sel.edge) ? diagram.edges[sel.edge] : null;

@@ -55,10 +55,25 @@ describe("App", () => {
     globalThis.fetch = vi.fn(async (url, o) => String(url).endsWith("api/health")
       ? { ok: true, status: 200, json: async () => ({ mode: "mock-only" }) } : base(url, o));
     render(<App />);
-    expect(await screen.findByTestId("mock-banner")).toHaveTextContent("Hosted mock: sample data only, nothing leaves this server");
+    expect(await screen.findByText("Hosted mock: sample data only, nothing leaves this server")).toBe(screen.getByTestId("mock-banner"));
     expect(screen.queryByTestId("save")).toBeNull();
     expect(screen.queryByTestId("save-copy")).toBeNull();
     expect(screen.queryByTestId("import")).toBeNull();
+  });
+
+  it("shows the local Mock banner as main's first child in a normal local run (not hosted), and keeps Save and Import", async () => {
+    render(<App />);
+    await screen.findByTestId("picker");
+    const banner = screen.getByTestId("mock-banner");
+    expect(banner).toHaveTextContent("Mock mode: a local authoring tool over a local store. Simulate walks the arrows in order; no tenant, no outbound network request");
+    expect(banner).not.toHaveTextContent("Hosted mock");
+    expect(banner).toHaveClass("banner");
+    expect(banner).toHaveAttribute("role", "note");
+    expect(banner).not.toHaveAttribute("data-state");
+    expect(document.querySelector("main").firstElementChild).toBe(banner);
+    expect(document.querySelector("header.shell-bar").nextElementSibling.tagName).toBe("MAIN");
+    expect(screen.getByTestId("save")).toBeInTheDocument();
+    expect(screen.getByTestId("import")).toBeInTheDocument();
   });
 
   it("shell bar first: brand, Mock badge, current page pill and the TopMenu in header.shell-bar; the banner opens <main>", async () => {
@@ -66,7 +81,7 @@ describe("App", () => {
     globalThis.fetch = vi.fn(async (url, o) => String(url).endsWith("api/health")
       ? { ok: true, status: 200, json: async () => ({ mode: "mock-only" }) } : base(url, o));
     render(<App />);
-    await screen.findByTestId("mock-banner");
+    await screen.findByText("Hosted mock: sample data only, nothing leaves this server"); // the hosted text replaces the local one once health says mock-only
     const bar = document.querySelector("header.shell-bar");
     expect(bar).not.toBeNull();
     expect(document.body.firstElementChild.firstElementChild).toBe(bar); // the bar comes before everything else
@@ -100,7 +115,7 @@ describe("App", () => {
       ? { ok: true, status: 200, json: async () => ({ mode: "mock-only" }) } : base(url, o));
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<App />);
-    await screen.findByTestId("mock-banner");
+    await screen.findByText("Hosted mock: sample data only, nothing leaves this server"); // the hosted text replaces the local one once health says mock-only
     await user.click(screen.getByTestId("edit-toggle"));
     await user.click(screen.getByTestId("add-box"));
     expect(screen.queryByText(/unsaved changes/)).toBeNull();
