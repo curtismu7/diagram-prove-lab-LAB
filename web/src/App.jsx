@@ -219,45 +219,60 @@ export default function App() {
 
   const problems = useMemo(() => (diagram ? validateDiagram(diagram) : []), [diagram]);
   const caps = useMemo(() => (diagram ? captions(diagram) : []), [diagram]);
-  if (!diagram) return <div className="page"><p role="status">{msg.text || "Loading…"}</p></div>;
+  // Standard app shell (UI patterns section 1): the shell bar first, then <main> with the banner as its first child.
+  const shellBar = (
+    <header className="shell-bar">
+      <span className="shell-brand">
+        <span className="shell-logo" aria-hidden="true">DP</span>
+        <h1>Diagram Prove Lab</h1>
+        <span className={`shell-badge${modeInfo?.source === "real" ? " shell-badge--real" : ""}`} data-testid="mode-badge">{modeInfo?.source === "real" ? "Real" : "Mock"}</span>
+      </span>
+      <nav className="shell-nav" aria-label="Pages">
+        <a href="#main" aria-current="page">Diagram studio</a>
+      </nav>
+      <TopMenu
+        mode={{ value: modeInfo?.source === "real" ? "real" : "mock", onChange: selectMode, realAvailable: modeInfo ? modeInfo.realAvailable : null, realHint: "Real is not available: this studio is a local authoring tool over a local store. Mock is the whole demo." }}
+        theme={{ value: theme === "" ? "auto" : theme, onChange: (t) => setTheme(t === "auto" ? "" : t) }}
+        fontSize={{ value: fontStep, onChange: setFontStep }}
+        present={{ active: present, onToggle: () => { focusAfter.current = true; setPresent(!present); setEditing(false); } }}
+        help={{ href: "https://github.com/curtismu7/diagram-prove-lab#readme" }}
+        version={LAB_VERSION}
+        onReset={diagram ? resetLayoutNow : undefined}
+        extra={null}
+      >
+        <ShelfLink path="api/shelf" />
+        <VerifyMark id="diagram-prove-lab" path="api/shelf" />
+      </TopMenu>
+    </header>
+  );
+  const banner = mockOnly && <p className="banner" role="note" data-testid="mock-banner">Hosted mock: sample data only, nothing leaves this server</p>;
+  if (!diagram) return <>{shellBar}<main id="main" className="page">{banner}<p role="status">{msg.text || "Loading…"}</p></main></>;
   const selNode = sel.node && diagram.nodes.find((n) => n.id === sel.node);
   const selEdge = Number.isInteger(sel.edge) ? diagram.edges[sel.edge] : null;
   const playing = st.step >= 0 && !st.paused;
   const activeStep = st.step >= 0 && diagram.steps ? diagram.steps.findIndex((s) => s.edges.includes(st.step)) : -1;
+  // One primary button per view state (UI patterns section 9): Create while the New diagram panel is open,
+  // Save while there are changes it can save, otherwise Simulate. Presenter mode hides both, so Simulate stays primary there.
+  const canSave = !mockOnly && !builtin && dirty && problems.length === 0;
+  const primaryView = present ? "simulate" : creating ? "create" : canSave ? "save" : "simulate";
 
   return (
-    <div className="shell">
-      {mockOnly && <p className="mock-banner" role="note" data-testid="mock-banner">Hosted mock: sample data only, nothing leaves this server</p>}
-      <header className="top">
-        <h1>Diagram Prove Lab</h1>
-        <label className="grow">
+    <>
+      {shellBar}
+      <main id="main" className="page">
+        {banner}
+        <label className="picker-row">
           <span className="picker-label">Choose a diagram</span>{" "}
           <select className="picker" aria-label="Diagram" value={diagram.id} onChange={(e) => { pick(e.target.value); if (present) e.target.blur(); }} data-testid="picker">
             {list.map((d) => <option key={d.id} value={d.id}>{d.title}{list.filter((x) => x.title === d.title).length > 1 ? ` [${d.id}]` : ""}{d.builtin ? " (sample)" : ""}</option>)}
           </select>
           {list.length > 1 && <span className="picker-count" data-testid="picker-count"> {list.length} to explore</span>}
         </label>
-        <TopMenu
-          mode={{ value: modeInfo?.source === "real" ? "real" : "mock", onChange: selectMode, realAvailable: modeInfo ? modeInfo.realAvailable : null, realHint: "Real is not available: this studio is a local authoring tool over a local store. Mock is the whole demo." }}
-          theme={{ value: theme === "" ? "auto" : theme, onChange: (t) => setTheme(t === "auto" ? "" : t) }}
-          fontSize={{ value: fontStep, onChange: setFontStep }}
-          present={{ active: present, onToggle: () => { focusAfter.current = true; setPresent(!present); setEditing(false); } }}
-          help={{ href: "https://github.com/curtismu7/diagram-prove-lab#readme" }}
-          version={LAB_VERSION}
-          onReset={resetLayoutNow}
-          extra={null}
-        >
-          <ShelfLink path="api/shelf" />
-          <VerifyMark id="diagram-prove-lab" path="api/shelf" />
-        </TopMenu>
-      </header>
-
-      <main className="page">
         <h2>{diagram.title}{dirty && <span className="muted small"> · unsaved changes</span>}</h2>
         {diagram.lede && <p className="lede">{diagram.lede}</p>}
 
         <div className="bar" role="toolbar" aria-label="Walkthrough controls">
-          <button className="primary" onClick={() => dispatch({ type: "simulate", total })} disabled={!total} data-testid="simulate">Simulate</button>
+          <button className={primaryView === "simulate" ? "primary" : ""} onClick={() => dispatch({ type: "simulate", total })} disabled={!total} data-testid="simulate">Simulate</button>
           {playing
             ? <button onClick={() => dispatch({ type: "pause" })} data-testid="pause">Pause</button>
             : <button onClick={() => dispatch({ type: "resume" })} disabled={st.step < 0} data-testid="resume">Resume</button>}
@@ -294,7 +309,7 @@ export default function App() {
           <button onClick={() => { edit((d) => autoLayout(d)); setFitKey((k) => k + 1); }} data-testid="tidy" title="Lay the boxes out left to right with no overlaps">Tidy</button>
           <button onClick={() => setCreating(!creating)} aria-expanded={creating} data-testid="new-open">New diagram</button>
           {editing && <button onClick={() => edit((d) => addNode(d, { label: "New box" }))} data-testid="add-box">Add box</button>}
-          {!mockOnly && <button className="primary" onClick={save} disabled={builtin || !dirty || problems.length > 0} title={builtin ? "Samples are read-only: use Save a copy" : ""} data-testid="save">Save</button>}
+          {!mockOnly && <button className={primaryView === "save" ? "primary" : ""} onClick={save} disabled={builtin || !dirty || problems.length > 0} title={builtin ? "Samples are read-only: use Save a copy" : ""} data-testid="save">Save</button>}
           {!mockOnly && <button onClick={saveCopy} data-testid="save-copy">Save a copy</button>}
           <button onClick={exportFile} data-testid="export">Export JSON</button>
           <button onClick={exportSvg} data-testid="export-svg">Export SVG</button>
@@ -310,7 +325,7 @@ export default function App() {
             <label>Start from <select value={fresh.template} onChange={(e) => setFresh({ ...fresh, template: e.target.value })} data-testid="new-template">
               {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select></label>
-            <button className="primary" onClick={createNew} data-testid="new-create">Create</button>
+            <button className={primaryView === "create" ? "primary" : ""} onClick={createNew} data-testid="new-create">Create</button>
             <button onClick={() => setCreating(false)}>Cancel</button>
           </section>
         )}
@@ -394,6 +409,6 @@ export default function App() {
 
         <ProvePanel diagramId={diagram.id} />
       </main>
-    </div>
+    </>
   );
 }

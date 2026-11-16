@@ -61,6 +61,38 @@ describe("App", () => {
     expect(screen.queryByTestId("import")).toBeNull();
   });
 
+  it("shell bar first: brand, Mock badge, current page pill and the TopMenu in header.shell-bar; the banner opens <main>", async () => {
+    const base = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (url, o) => String(url).endsWith("api/health")
+      ? { ok: true, status: 200, json: async () => ({ mode: "mock-only" }) } : base(url, o));
+    render(<App />);
+    await screen.findByTestId("mock-banner");
+    const bar = document.querySelector("header.shell-bar");
+    expect(bar).not.toBeNull();
+    expect(document.body.firstElementChild.firstElementChild).toBe(bar); // the bar comes before everything else
+    expect(bar.nextElementSibling.tagName).toBe("MAIN");
+    expect(bar.querySelector(".shell-brand h1")).toHaveTextContent("Diagram Prove Lab");
+    expect(within(bar).getByTestId("mode-badge")).toHaveTextContent("Mock");
+    expect(bar.querySelector('.shell-nav a[aria-current="page"]')).toHaveTextContent("Diagram studio");
+    expect(within(bar).getByTestId("top-menu")).toHaveClass("shell-right");
+    expect(document.querySelector("main").firstElementChild).toBe(screen.getByTestId("mock-banner"));
+    expect(screen.getByTestId("mock-banner")).toHaveClass("banner");
+    expect(document.querySelectorAll("h1")).toHaveLength(1);
+    expect(bar.contains(screen.getByTestId("picker"))).toBe(false);
+  });
+
+  it("one primary button per view state: Simulate, or Create while the New diagram panel is open", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByTestId("picker");
+    const primaries = () => [...document.querySelectorAll("button.primary")].map((b) => b.dataset.testid);
+    expect(primaries()).toEqual(["simulate"]);
+    await user.click(screen.getByTestId("new-open"));
+    expect(primaries()).toEqual(["new-create"]);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(primaries()).toEqual(["simulate"]);
+  });
+
   it("in the hosted mock, edits show no unsaved label and switching diagrams skips the discard prompt", async () => {
     const user = userEvent.setup();
     const base = globalThis.fetch;

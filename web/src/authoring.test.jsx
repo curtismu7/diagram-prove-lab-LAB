@@ -121,6 +121,13 @@ describe("New diagram", () => {
     expect(boxCount()).toBe(3);
     expect(screen.getByTestId("save")).toBeDisabled(); // nothing changed since it was created
     expect(within(screen.getByTestId("picker")).getByRole("option", { name: "Approval flow" })).toBeInTheDocument();
+    // One primary per view state: Simulate until there is something Save can save, then Save.
+    const primaries = () => [...document.querySelectorAll("button.primary")].map((b) => b.dataset.testid);
+    expect(primaries()).toEqual(["simulate"]);
+    await user.click(screen.getByTestId("edit-toggle"));
+    await user.click(screen.getByTestId("add-box"));
+    await waitFor(() => expect(screen.getByTestId("save")).toBeEnabled());
+    expect(primaries()).toEqual(["save"]);
   });
 
   it("a second diagram with the same title gets a new id; a server refusal is shown", async () => {
