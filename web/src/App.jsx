@@ -9,6 +9,8 @@ import WirePanel from "./WirePanel.jsx";
 import DetailsEditor from "./DetailsEditor.jsx";
 import { download, svgToPng } from "./exportImage.js";
 import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
+import TalkTrackDialog from "./talk-track/TalkTrackDialog.jsx";
+import talkMd from "../../docs/talk-track.md?raw";
 import { useStepper } from "./useStepper.js";
 import { keyAction } from "./presenterKeys.js";
 import ShelfLink from "./components/ShelfLink.jsx";
@@ -44,6 +46,15 @@ export default function App() {
   });
   const [arrow, setArrow] = useState({ from: "", to: "" });
   const [theme, setTheme] = useState(() => { try { return ["", "light", "dark"].includes(localStorage.getItem("studio-theme")) ? localStorage.getItem("studio-theme") : ""; } catch { return ""; } });
+  const [talkOpen, setTalkOpen] = useState(false);
+  const talkSteps = (() => {
+    const steps = []; let n = 0;
+    for (const line of talkMd.split("\\n")) {
+      const m = line.match(/^\d+\.\s+\*\*(.+?)\.\*\*\s*(.*)$/);
+      if (m) { n += 1; steps.push({ id: `s${n}`, title: m[1], say: m[2] }); }
+    }
+    return steps.length ? steps : [{ id: "s1", title: "Talk track", say: talkMd.slice(0, 600) }];
+  })();
   const [fontStep, setFontStep] = useState(() => { try { const f = localStorage.getItem("studio-font"); return ["S", "M", "L"].includes(f) ? f : "M"; } catch { return "M"; } });
   const total = diagram ? diagram.edges.length : 0;
   const [st, dispatch] = useStepper(total);
@@ -233,6 +244,7 @@ export default function App() {
       <TopMenu
         mode={{ value: modeInfo?.source === "real" ? "real" : "mock", onChange: selectMode, realAvailable: modeInfo ? modeInfo.realAvailable : null, realHint: "Real is not available: this studio is a local authoring tool over a local store. Mock is the whole demo." }}
         theme={{ value: theme === "" ? "auto" : theme, onChange: (t) => setTheme(t === "auto" ? "" : t) }}
+        talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
         fontSize={{ value: fontStep, onChange: setFontStep }}
         present={{ active: present, onToggle: () => { focusAfter.current = true; setPresent(!present); setEditing(false); } }}
         help={{ href: "https://github.com/curtismu7/diagram-prove-lab#readme" }}
@@ -410,6 +422,8 @@ export default function App() {
 
         <ProvePanel diagramId={diagram.id} />
       </main>
+      <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
     </>
   );
 }
+
